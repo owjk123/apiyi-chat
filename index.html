@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>API易 AI对话</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f0f2f5;--card:#fff;--pri:#4f46e5;--pri-l:#eef2ff;--txt:#1f2937;--txt2:#6b7280;--bdr:#e5e7eb;--ai-bg:#f8fafc;--user-bg:#4f46e5;--user-txt:#fff;--shadow:0 1px 3px rgba(0,0,0,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.header{background:var(--card);border-bottom:1px solid var(--bdr);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);z-index:10;flex-shrink:0}
+.header h1{font-size:16px;font-weight:700;color:var(--pri)}
+.header-btn{background:none;border:1px solid var(--bdr);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--txt2)}
+.header-btn:active{background:var(--pri-l)}
+.chat-area{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch}
+.msg{margin-bottom:12px;max-width:88%;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg-user{margin-left:auto}.msg-ai{margin-right:auto}
+.msg-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.7;word-break:break-word}
+.msg-user .msg-bubble{background:var(--user-bg);color:var(--user-txt);border-bottom-right-radius:4px}
+.msg-ai .msg-bubble{background:var(--ai-bg);border:1px solid var(--bdr);border-bottom-left-radius:4px}
+.msg-ai .msg-bubble p{margin:6px 0}.msg-ai .msg-bubble p:first-child{margin-top:0}.msg-ai .msg-bubble p:last-child{margin-bottom:0}
+.msg-ai .msg-bubble code{background:#e5e7eb;padding:2px 5px;border-radius:4px;font-size:13px;font-family:Menlo,Consolas,monospace}
+.msg-ai .msg-bubble pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0;font-size:13px;font-family:Menlo,Consolas,monospace}
+.msg-ai .msg-bubble pre code{background:none;padding:0;color:inherit}
+.msg-ai .msg-bubble ul,.msg-ai .msg-bubble ol{padding-left:20px;margin:6px 0}
+.msg-ai .msg-bubble li{margin:3px 0}
+.msg-ai .msg-bubble blockquote{border-left:3px solid var(--pri);padding-left:10px;color:var(--txt2);margin:8px 0}
+.msg-ai .msg-bubble strong{font-weight:700}.msg-ai .msg-bubble em{font-style:italic}
+.msg-ai .msg-bubble a{color:var(--pri);text-decoration:underline}
+.msg-ai .msg-bubble table{border-collapse:collapse;margin:8px 0;width:100%}
+.msg-ai .msg-bubble th,.msg-ai .msg-bubble td{border:1px solid var(--bdr);padding:6px 8px;font-size:13px}
+.msg-ai .msg-bubble th{background:var(--pri-l)}
+.think-toggle{font-size:12px;color:var(--txt2);cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;user-select:none}
+.think-toggle::before{content:'▶';font-size:10px;transition:transform .2s}
+.think-toggle.open::before{transform:rotate(90deg)}
+.think-content{display:none;font-size:12px;color:var(--txt2);padding:6px 8px;margin:4px 0;background:#f1f5f9;border-radius:6px;border-left:2px solid var(--pri);white-space:pre-wrap;line-height:1.5}
+.think-content.show{display:block}
+.input-area{background:var(--card);border-top:1px solid var(--bdr);padding:10px 12px;flex-shrink:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+#msgInput{flex:1;border:1px solid var(--bdr);border-radius:12px;padding:10px 14px;font-size:14px;resize:none;max-height:120px;min-height:40px;line-height:1.5;font-family:inherit;outline:none;transition:border-color .2s}
+#msgInput:focus{border-color:var(--pri)}
+.send-btn{background:var(--pri);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:14px;cursor:pointer;white-space:nowrap;transition:opacity .2s}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}.send-btn:active:not(:disabled){opacity:.8}
+.stop-btn{background:#ef4444}
+.settings{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:rgba(0,0,0,.4)}
+.settings.open{display:flex;align-items:flex-end;justify-content:center}
+.settings-panel{background:var(--card);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto;animation:slideUp .3s;position:relative}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.settings-panel h2{font-size:16px;margin-bottom:14px;color:var(--pri)}
+.sg{margin-bottom:12px}
+.sg label{display:block;font-size:12px;color:var(--txt2);margin-bottom:4px}
+.sg input,.sg select,.sg textarea{width:100%;border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit}
+.sg input:focus,.sg select:focus,.sg textarea:focus{border-color:var(--pri)}
+.sg textarea{resize:vertical;min-height:60px}
+.range-row{display:flex;align-items:center;gap:8px}
+.range-row input[type=range]{flex:1}
+.range-row span{font-size:12px;color:var(--txt2);min-width:36px;text-align:right}
+.toggle-row{display:flex;align-items:center;justify-content:space-between}
+.toggle{width:44px;height:24px;background:#d1d5db;border-radius:12px;position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--pri)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s}
+.toggle.on::after{left:22px}
+.close-settings{position:absolute;top:12px;right:14px;font-size:20px;cursor:pointer;color:var(--txt2);background:none;border:none}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.btn-row button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--bdr);cursor:pointer;font-size:13px}
+.btn-row button.primary{background:var(--pri);color:#fff;border-color:var(--pri)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--txt2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px;margin:4px 0}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>API易 AI对话</h1>
+<div style="display:flex;gap:6px">
+<button class="header-btn" onclick="clearChat()">清空</button>
+<button class="header-btn" onclick="toggleSettings()">设置</button>
+</div>
+</div>
+<div class="chat-area" id="chatArea">
+<div class="empty-state"><div class="icon">💬</div><p>选择模型，开始对话</p><p style="font-size:12px;margin-top:8px">点击右上角「设置」配置API</p></div>
+</div>
+<div class="input-area">
+<div class="input-row">
+<textarea id="msgInput" placeholder="输入消息..." rows="1"></textarea>
+<button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+</div>
+</div>
+<div class="settings" id="settingsPanel" onclick="if(event.target===this)toggleSettings()">
+<div class="settings-panel">
+<button class="close-settings" onclick="toggleSettings()">✕</button>
+<h2>设置</h2>
+<div class="sg"><label>API Key</label><input type="password" id="cfgKey" placeholder="sk-xxx"></div>
+<div class="sg"><label>API地址</label><input id="cfgUrl" placeholder="https://api.apiyi.com/v1"></div>
+<div class="sg"><label>模型</label><select id="cfgModel">
+<optgroup label="Grok系列">
+<option value="grok-4.3">grok-4.3</option>
+<option value="grok-4.20-beta">grok-4.20-beta</option>
+<option value="grok-4">grok-4</option>
+<option value="grok-4-fast">grok-4-fast</option>
+<option value="grok-4-1-fast">grok-4-1-fast</option>
+</optgroup>
+<optgroup label="GPT系列">
+<option value="gpt-5.5">gpt-5.5</option>
+<option value="gpt-5.4-pro">gpt-5.4-pro</option>
+<option value="gpt-5.4">gpt-5.4</option>
+<option value="gpt-5.4-mini">gpt-5.4-mini</option>
+<option value="gpt-5.4-nano">gpt-5.4-nano</option>
+<option value="gpt-5.2">gpt-5.2</option>
+<option value="gpt-5.1">gpt-5.1</option>
+<option value="gpt-5-pro">gpt-5-pro</option>
+<option value="gpt-5">gpt-5</option>
+<option value="gpt-5-mini">gpt-5-mini</option>
+<option value="gpt-5-nano">gpt-5-nano</option>
+<option value="gpt-4o">gpt-4o</option>
+<option value="gpt-4o-mini">gpt-4o-mini</option>
+<option value="gpt-4.1">gpt-4.1</option>
+<option value="gpt-4.1-mini">gpt-4.1-mini</option>
+<option value="gpt-4.1-nano">gpt-4.1-nano</option>
+<option value="gpt-4-turbo">gpt-4-turbo</option>
+<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+</optgroup>
+<optgroup label="O系列(推理)">
+<option value="o4-mini">o4-mini</option>
+<option value="o3">o3</option>
+<option value="o3-mini">o3-mini</option>
+<option value="o1">o1</option>
+<option value="o1-mini">o1-mini</option>
+</optgroup>
+<optgroup label="Claude系列">
+<option value="claude-opus-4-7">claude-opus-4-7</option>
+<option value="claude-opus-4-7-thinking">claude-opus-4-7-thinking</option>
+<option value="claude-opus-4-6">claude-opus-4-6</option>
+<option value="claude-opus-4-6-thinking">claude-opus-4-6-thinking</option>
+<option value="claude-opus-4-5-20251101">claude-opus-4-5</option>
+<option value="claude-opus-4-5-20251101-thinking">claude-opus-4-5-thinking</option>
+<option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+<option value="claude-sonnet-4-6-thinking">claude-sonnet-4-6-thinking</option>
+<option value="claude-sonnet-4-5-20250929">claude-sonnet-4-5</option>
+<option value="claude-sonnet-4-5-20250929-thinking">claude-sonnet-4-5-thinking</option>
+<option value="claude-sonnet-4-20250514">claude-sonnet-4</option>
+<option value="claude-sonnet-4-20250514-thinking">claude-sonnet-4-thinking</option>
+<option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+<option value="claude-haiku-4-5-20251001-thinking">claude-haiku-4-5-thinking</option>
+</optgroup>
+<optgroup label="Gemini系列">
+<option value="gemini-3-pro-preview">gemini-3-pro</option>
+<option value="gemini-3-pro-preview-thinking">gemini-3-pro-thinking</option>
+<option value="gemini-3.1-pro-preview">gemini-3.1-pro</option>
+<option value="gemini-3.1-pro-preview-thinking">gemini-3.1-pro-thinking</option>
+<option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+<option value="gemini-2.5-pro">gemini-2.5-pro</option>
+<option value="gemini-2.5-flash">gemini-2.5-flash</option>
+</optgroup>
+<optgroup label="DeepSeek系列">
+<option value="deepseek-v4-pro">deepseek-v4-pro</option>
+<option value="deepseek-v4-flash">deepseek-v4-flash</option>
+<option value="deepseek-v3.1">deepseek-v3.1</option>
+<option value="deepseek-r1">deepseek-r1</option>
+<option value="deepseek-chat">deepseek-chat</option>
+<option value="deepseek-reasoner">deepseek-reasoner</option>
+</optgroup>
+<optgroup label="其他">
+<option value="kimi-k2.5">kimi-k2.5</option>
+<option value="kimi-k2">kimi-k2</option>
+<option value="qwen3-max">qwen3-max</option>
+<option value="qwen-max">qwen-max</option>
+<option value="glm-5">glm-5</option>
+</optgroup>
+</select></div>
+<div class="sg"><label>系统提示词</label><textarea id="cfgSys" placeholder="你是一个有帮助的AI助手"></textarea></div>
+<div class="sg"><label>Temperature</label><div class="range-row"><input type="range" id="cfgTemp" min="0" max="2" step="0.1" value="0.7"><span id="cfgTempVal">0.7</span></div></div>
+<div class="sg"><label>最大输出Token</label><input type="number" id="cfgMaxTok" value="4096" min="1" max="128000"></div>
+<div class="sg"><label>Top P</label><div class="range-row"><input type="range" id="cfgTopP" min="0" max="1" step="0.05" value="1"><span id="cfgTopPVal">1</span></div></div>
+<div class="sg toggle-row"><span style="font-size:13px">流式输出</span><div class="toggle on" id="cfgStream" onclick="this.classList.toggle('on')"></div></div>
+<div class="sg toggle-row"><span style="font-size:13px">显示思考过程</span><div class="toggle on" id="cfgThink" onclick="this.classList.toggle('on')"></div></div>
+<div class="btn-row"><button onclick="saveSettings()">保存</button><button class="primary" onclick="saveSettings();toggleSettings()">保存并关闭</button></div>
+</div></div>
+<script>
+var cfg={key:"",baseUrl:"https://api.apiyi.com/v1",model:"grok-4.3",sys:"",temperature:0.7,maxTokens:4096,topP:1,stream:true,showThink:true};
+var history=[],generating=false,abortCtrl=null;
+function loadCfg(){try{var s=localStorage.getItem("apiyi_cfg");if(s){var d=JSON.parse(s);for(var k in d)if(cfg.hasOwnProperty(k))cfg[k]=d[k]}}catch(e){}document.getElementById("cfgKey").value=cfg.key;document.getElementById("cfgUrl").value=cfg.baseUrl;document.getElementById("cfgModel").value=cfg.model;document.getElementById("cfgSys").value=cfg.sys;document.getElementById("cfgTemp").value=cfg.temperature;document.getElementById("cfgTempVal").textContent=cfg.temperature;document.getElementById("cfgMaxTok").value=cfg.maxTokens;document.getElementById("cfgTopP").value=cfg.topP;document.getElementById("cfgTopPVal").textContent=cfg.topP;document.getElementById("cfgStream").className="toggle"+(cfg.stream?" on":"");document.getElementById("cfgThink").className="toggle"+(cfg.showThink?" on":"");}
+function saveSettings(){cfg.key=document.getElementById("cfgKey").value.trim();cfg.baseUrl=document.getElementById("cfgUrl").value.trim();cfg.model=document.getElementById("cfgModel").value;cfg.sys=document.getElementById("cfgSys").value.trim();cfg.temperature=parseFloat(document.getElementById("cfgTemp").value);cfg.maxTokens=parseInt(document.getElementById("cfgMaxTok").value)||4096;cfg.topP=parseFloat(document.getElementById("cfgTopP").value);cfg.stream=document.getElementById("cfgStream").classList.contains("on");cfg.showThink=document.getElementById("cfgThink").classList.contains("on");localStorage.setItem("apiyi_cfg",JSON.stringify(cfg));showToast("设置已保存");}
+function toggleSettings(){document.getElementById("settingsPanel").classList.toggle("open");}
+function showToast(msg){var t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove()},1500);}
+function md(text){if(!text)return"";text=text.replace(/```(\w*)\n([\s\S]*?)```/g,function(m,lang,code){return'<pre><code>'+esc(code.trim())+'</code></pre>';});text=text.replace(/`([^`\n]+)`/g,'<code>$1</code>');text=text.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');text=text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');text=text.replace(/\*(.+?)\*/g,'<em>$1</em>');text=text.replace(/^#### (.+)$/gm,'<strong style="font-size:14px">$1</strong>');text=text.replace(/^### (.+)$/gm,'<strong style="font-size:15px">$1</strong>');text=text.replace(/^## (.+)$/gm,'<strong style="font-size:16px">$1</strong>');text=text.replace(/^# (.+)$/gm,'<strong style="font-size:18px">$1</strong>');text=text.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');text=text.replace(/^[\-\*] (.+)$/gm,'<li>$1</li>');text=text.replace(/(<li>.*<\/li>\n?)+/g,function(m){return'<ul>'+m+'</ul>';});text=text.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');text=text.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');text=text.replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0">');var parts=text.split(/\n\n+/);var html="";for(var i=0;i<parts.length;i++){var p=parts[i].trim();if(!p)continue;if(p.startsWith('<pre>')||p.startsWith('<ul>')||p.startsWith('<ol>')||p.startsWith('<blockquote>')||p.startsWith('<hr')||p.startsWith('<strong style')){html+=p;}else{html+='<p>'+p.replace(/\n/g,'<br>')+'</p>';}}return html;}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function addMsg(role,content,thinkContent){var area=document.getElementById("chatArea");var es=area.querySelector('.empty-state');if(es)es.remove();var div=document.createElement("div");div.className="msg "+(role==="user"?"msg-user":"msg-ai");var bubble=document.createElement("div");bubble.className="msg-bubble";if(role==="user"){bubble.textContent=content;}else{if(thinkContent&&cfg.showThink){var tt=document.createElement("div");tt.className="think-toggle";tt.textContent="思考过程";var tc=document.createElement("div");tc.className="think-content";tc.textContent=thinkContent;tt.onclick=function(){this.classList.toggle("open");tc.classList.toggle("show");};div.appendChild(tt);div.appendChild(tc);}bubble.innerHTML=md(content);}div.appendChild(bubble);area.appendChild(div);area.scrollTop=area.scrollHeight;return bubble;}
+function updateBubble(bubble,content){bubble.innerHTML=md(content);document.getElementById("chatArea").scrollTop=document.getElementById("chatArea").scrollHeight;}
+function clearChat(){history=[];document.getElementById("chatArea").innerHTML='<div class="empty-state"><div class="icon">💬</div><p>选择模型，开始对话</p></div>';showToast("已清空");}
+function useMaxCompletion(model){var m=model.toLowerCase();return m.startsWith('o1')||m.startsWith('o3')||m.startsWith('o4')||m==='gpt-4-turbo'||m.startsWith('gpt-5');}
+async function sendMessage(){var input=document.getElementById("msgInput");var text=input.value.trim();if(!text||generating)return;if(!cfg.key){showToast("请先设置API Key");toggleSettings();return;}input.value="";input.style.height="auto";generating=true;document.getElementById("sendBtn").textContent="停止";document.getElementById("sendBtn").className="send-btn stop-btn";document.getElementById("sendBtn").onclick=stopGen;addMsg("user",text);history.push({role:"user",content:text});var msgs=[];if(cfg.sys)msgs.push({role:"system",content:cfg.sys});msgs=msgs.concat(history);var body={model:cfg.model,messages:msgs};if(useMaxCompletion(cfg.model)){body.max_completion_tokens=cfg.maxTokens;}else{body.max_tokens=cfg.maxTokens;}body.temperature=cfg.temperature;body.top_p=cfg.topP;var bubble=addMsg("ai","");var aiText="",thinkText="",inThink=false;if(cfg.stream){try{abortCtrl=new AbortController();var resp=await fetch(cfg.baseUrl+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.key},body:JSON.stringify(body),signal:abortCtrl.signal});if(!resp.ok){var err=await resp.text();try{err=JSON.parse(err).error.message||err}catch(e){}bubble.innerHTML='<span style="color:#ef4444">错误: '+esc(err)+'</span>';history.pop();generating=false;resetBtn();return;}var reader=resp.body.getReader();var decoder=new TextDecoder();var buffer="";while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split("\n");buffer=lines.pop();for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(!line||!line.startsWith("data:"))continue;var data=line.slice(5).trim();if(data==="[DONE]")break;try{var j=JSON.parse(data);var delta=j.choices&&j.choices[0]&&j.choices[0].delta;if(delta){if(delta.reasoning_content){thinkText+=delta.reasoning_content;inThink=true;}if(delta.content){if(inThink)inThink=false;aiText+=delta.content;}updateBubble(bubble,aiText);}}catch(e){}}}}catch(e){if(e.name!=="AbortError"){bubble.innerHTML='<span style="color:#ef4444">错误: '+esc(e.message)+'</span>';history.pop();}}}else{try{abortCtrl=new AbortController();var resp=await fetch(cfg.baseUrl+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.key},body:JSON.stringify(body),signal:abortCtrl.signal});if(!resp.ok){var err=await resp.text();try{err=JSON.parse(err).error.message||err}catch(e){}bubble.innerHTML='<span style="color:#ef4444">错误: '+esc(err)+'</span>';history.pop();generating=false;resetBtn();return;}var j=await resp.json();var choice=j.choices&&j.choices[0];if(choice){aiText=choice.message&&choice.message.content||"";if(choice.message&&choice.message.reasoning_content){thinkText=choice.message.reasoning_content;}updateBubble(bubble,aiText);}}catch(e){if(e.name!=="AbortError"){bubble.innerHTML='<span style="color:#ef4444">错误: '+esc(e.message)+'</span>';history.pop();}}}if(aiText){history.push({role:"assistant",content:aiText});}if(thinkText&&cfg.showThink){var msgDiv=bubble.parentElement;var tt=document.createElement("div");tt.className="think-toggle";tt.textContent="思考过程";var tc=document.createElement("div");tc.className="think-content";tc.textContent=thinkText;tt.onclick=function(){this.classList.toggle("open");tc.classList.toggle("show");};msgDiv.insertBefore(tc,msgDiv.firstChild);msgDiv.insertBefore(tt,msgDiv.firstChild);}generating=false;resetBtn();}
+function stopGen(){if(abortCtrl){abortCtrl.abort();abortCtrl=null;}generating=false;resetBtn();}
+function resetBtn(){var btn=document.getElementById("sendBtn");btn.textContent="发送";btn.className="send-btn";btn.onclick=sendMessage;}
+document.getElementById("msgInput").addEventListener("input",function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px";});
+document.getElementById("msgInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendMessage();}});
+document.getElementById("cfgTemp").addEventListener("input",function(){document.getElementById("cfgTempVal").textContent=this.value;});
+document.getElementById("cfgTopP").addEventListener("input",function(){document.getElementById("cfgTopPVal").textContent=this.value;});
+loadCfg();
+</script>
+</body>
+</html>
